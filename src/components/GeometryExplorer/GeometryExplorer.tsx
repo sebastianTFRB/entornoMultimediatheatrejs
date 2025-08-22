@@ -49,22 +49,20 @@ export default function GeometryExplorer() {
   // Estados persistentes
   const [wireframe, setWireframe] = useState<boolean>(() => localStorage.getItem('wireframe') === 'true')
   const [autoRotate, setAutoRotate] = useState<boolean>(() => localStorage.getItem('autoRotate') !== 'false')
-  const [selectedGeometry, setSelectedGeometry] = useState<GeometryItem>(geometries[0])
+  const [selectedGeometry, setSelectedGeometry] = useState<GeometryItem>(() => {
+    const savedName = localStorage.getItem('selectedGeometry')
+    const found = geometries.find(g => g.name === savedName)
+    return found ?? geometries[0]
+  })
 
   // Refs espejo
   const wireframeRef = useRef(wireframe)
   const autoRotateRef = useRef(autoRotate)
 
-  // Sync React -> Ref + localStorage
-  useEffect(() => {
-    wireframeRef.current = wireframe
-    localStorage.setItem('wireframe', String(wireframe))
-  }, [wireframe])
-
-  useEffect(() => {
-    autoRotateRef.current = autoRotate
-    localStorage.setItem('autoRotate', String(autoRotate))
-  }, [autoRotate])
+  // Guardar estados en localStorage
+  useEffect(() => { wireframeRef.current = wireframe; localStorage.setItem('wireframe', String(wireframe)) }, [wireframe])
+  useEffect(() => { autoRotateRef.current = autoRotate; localStorage.setItem('autoRotate', String(autoRotate)) }, [autoRotate])
+  useEffect(() => { localStorage.setItem('selectedGeometry', selectedGeometry.name) }, [selectedGeometry])
 
   // Inicializar escena
   useEffect(() => {
@@ -81,10 +79,9 @@ export default function GeometryExplorer() {
 
     if (rendererRef.current) {
       rendererRef.current.dispose()
-      if (mountRef.current.contains(rendererRef.current.domElement)) {
-        mountRef.current.removeChild(rendererRef.current.domElement)
-      }
+      if (mountRef.current.contains(rendererRef.current.domElement)) mountRef.current.removeChild(rendererRef.current.domElement)
     }
+
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(width, height)
     renderer.setPixelRatio(window.devicePixelRatio)
@@ -116,14 +113,13 @@ export default function GeometryExplorer() {
     }
     animate()
 
+    // Resize
     const handleResize = () => {
       if (!mountRef.current) return
       const rect = mountRef.current.getBoundingClientRect()
-      const w = rect.width || 800
-      const h = rect.height || 600
-      camera.aspect = w / h
+      camera.aspect = rect.width / rect.height
       camera.updateProjectionMatrix()
-      renderer.setSize(w, h)
+      renderer.setSize(rect.width, rect.height)
     }
     window.addEventListener('resize', handleResize)
 
